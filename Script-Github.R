@@ -1,4 +1,4 @@
-######## Script to analyse the CBS Downloads for 2023 in the DANS Data Station SSH
+######## Script to analyse the CBS Downloads for 2023 in the DANS Data Stations
 ####### INSTALL PACKAGES
 install.packages("stringr") 
 

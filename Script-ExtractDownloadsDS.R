@@ -1,16 +1,16 @@
-######## Script to analyse the CBS Downloads for 2023 in the DANS Data Stations
+######## Script to analyse the CBS Downloads for the year 2025 in the DANS Data Stations SSH and LS
+#Script was run in February 2026
+
 ####### INSTALL PACKAGES
-install.packages("stringr") 
+install.packages("data.table", dependencies=TRUE)
+install.packages("dplyr")
 
 ######## LOAD PACKAGES
-library (tidyverse)
-library (here)
-library (skimr)
 library(dplyr)
-library(ggpubr)
-library(stringr)
 library(data.table)
 
+####### Remove everything from your R workspace to start clean
+rm(list = ls())
 
 ##############################
 # GET THE FILES 
@@ -29,13 +29,14 @@ rm(file)
 ##### CLEAN THE DATA
 #Remove anything we know is from DANS (as we are curators of the data, these should not be counted)
 Data <- RawData[!grepl('@dans.knaw.nl', RawData$Email),]
+Data <- Data[!grepl('dataverse@mailinator.com', Data$Email),]
 
 #Select the right year
-DownloadEnView.AllYrs <- subset(Data, (Data$Type!='AccessRequest')) #Note that this now inlcudes downloads, explores and alls kinds of views
-DownloadEnView.2023 <- DownloadEnView.AllYrs[grepl('2023', DownloadEnView.AllYrs$Date),] #to only select 2023 from the data
+DownloadEnView.AllYrs <- subset(Data, (Data$Type!='AccessRequest')) #Note that this now includes downloads, explores and all kinds of views
+DownloadEnView.2025 <- DownloadEnView.AllYrs[grepl('2025', DownloadEnView.AllYrs$Date),] #to only select 2025 from the data
 
 #Create an estimation of the downloads per dataset
-Input <-DownloadEnView.2023
+Input <-DownloadEnView.2025
 
 templist<-list()
 j<-1
@@ -53,25 +54,25 @@ for (i in 1:(nrow(Input)-1))
   }
 }
 
-Datasets.DV.2023<-do.call(rbind, templist)
+Datasets.DV.2025<-do.call(rbind, templist)
 #remove the columns with file information as it is may be confusing for this part. 
 drop <- c("File.Name","File.Id", "File.PID")
-Datasets.DV.2023 = Datasets.DV.2023[,!(names(Datasets.DV.2023) %in% drop)]
+Datasets.DV.2025 = Datasets.DV.2025[,!(names(Datasets.DV.2025) %in% drop)]
 
 #Create an overview where we exclude downloads of the same Dataset from the same user (so we get an indication of unique users)
-Datasets.UNIEKDV.2023 <-Datasets.DV.2023
+Datasets.UNIEKDV.2025 <-Datasets.DV.2025
 #because I need to keep the rows were a user did not login (e.g. empty "email"), I want to ensure these receive a unique number (otherwise all empty email rows would be counted as one user)
-Datasets.UNIEKDV.2023$unNum <- seq.int(nrow(Datasets.UNIEKDV.2023))
+Datasets.UNIEKDV.2025$unNum <- seq.int(nrow(Datasets.UNIEKDV.2025))
 
 #Now I remove this number for all registered users (e.g. not empty "email"), so we set the value to 0 for all rows where the Email is not empty)
-Datasets.UNIEKDV.2023$unNum[which(Datasets.UNIEKDV.2023$Email!="")] <- 0
+Datasets.UNIEKDV.2025$unNum[which(Datasets.UNIEKDV.2025$Email!="")] <- 0
 
 #Now we can create a unique list based on rows having the same PID and the same Email and the same number (0), if the email is empty the number will be different. 
-Datasets.UNIEKDV.2023 = unique(setDT(Datasets.UNIEKDV.2023), by = c("Dataset.PID", "Email", "unNum"));
+Datasets.UNIEKDV.2025 = unique(setDT(Datasets.UNIEKDV.2025), by = c("Dataset.PID", "Email", "unNum"));
 
 #Create an overview of the number of downloads per DOI
-DownloadPerDOI<-Datasets.DV.2023 %>% count(Dataset.PID)
-UNIEKDownloadPerDOI <-Datasets.UNIEKDV.2023 %>% count(Dataset.PID) #Unieke gebruikers --> LET OP: ALLEEN JUISTE INFORMATIE VOOR RESTRICTED ACCESS, OPEN ACCESS GEBRUIKERS HOEVEN NIET IN TE LOGGEN!
+DownloadPerDOI<-Datasets.DV.2025 %>% count(Dataset.PID)
+UNIEKDownloadPerDOI <-Datasets.UNIEKDV.2025 %>% count(Dataset.PID) #Unieke gebruikers --> LET OP: ALLEEN JUISTE INFORMATIE VOOR RESTRICTED ACCESS, OPEN ACCESS GEBRUIKERS HOEVEN NIET IN TE LOGGEN!
 
 #Sanity check - the two overviews should have the same lengths (same number of datasets)
 if (nrow(DownloadPerDOI)!=nrow(UNIEKDownloadPerDOI)) {
@@ -85,7 +86,7 @@ for (i in 1:nrow(CBSDatasets)){
   if (!is.null(CBSDatasets$DOI[i])){
     
   testDOI<-CBSDatasets$DOI[i]
-  testDOI <- str_replace(testDOI, "https://doi.org/","doi:")
+  testDOI <-sub("https://doi.org/","doi:",testDOI)
   
   if (!is.na(match(testDOI, DownloadPerDOI$Dataset.PID))){
     p=match(testDOI, DownloadPerDOI$Dataset.PID)
